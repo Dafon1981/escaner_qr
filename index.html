@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VeriDoc-Med: Verificador de Documentos</title>
+    <title>VeriDoc-Med: Verificador de Documentos v2.0</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
@@ -38,68 +38,17 @@
             padding: 30px;
             box-sizing: border-box;
         }
-        .logo {
-            display: block;
-            height: 50px;
-            margin: 0 auto 20px auto;
-        }
-        h1 {
-            color: var(--azul-principal);
-            text-align: center;
-            font-size: 1.5rem;
-            margin-bottom: 25px;
-        }
-        #scanner-container {
-            width: 100%;
-            border: 2px dashed var(--borde-suave);
-            border-radius: 8px;
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        input {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid var(--borde-suave);
-            border-radius: 8px;
-            font-size: 1.1rem;
-            box-sizing: border-box;
-            text-align: center;
-            text-transform: uppercase;
-        }
-        button {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            color: var(--blanco);
-            background-color: var(--dorado-acento);
-        }
-        .hidden {
-            display: none;
-        }
-        .resultado-banner {
-            padding: 20px;
-            color: var(--blanco);
-            font-weight: bold;
-            font-size: 1.3rem;
-            text-align: center;
-            border-radius: 8px;
-            margin-top: 25px;
-        }
+        .logo { display: block; height: 50px; margin: 0 auto 20px auto; }
+        h1 { color: var(--azul-principal); text-align: center; font-size: 1.5rem; margin-bottom: 25px; }
+        #scanner-container { width: 100%; border: 2px dashed var(--borde-suave); border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+        input { width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--borde-suave); border-radius: 8px; font-size: 1.1rem; box-sizing: border-box; text-align: center; text-transform: uppercase; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--blanco); background-color: var(--dorado-acento); margin-top: 10px; }
+        .hidden { display: none; }
+        .resultado-banner { padding: 20px; color: var(--blanco); font-weight: bold; font-size: 1.3rem; text-align: center; border-radius: 8px; margin-top: 25px; }
         .banner-exito { background-color: var(--verde-exito); }
         .banner-error { background-color: var(--rojo-error); }
         .detalle-info { margin-top: 20px; }
-        .detalle-info p {
-            margin: 10px 0;
-            line-height: 1.6;
-            border-bottom: 1px solid var(--gris-fondo);
-            padding-bottom: 10px;
-            word-wrap: break-word;
-        }
+        .detalle-info p { margin: 10px 0; line-height: 1.6; border-bottom: 1px solid var(--gris-fondo); padding-bottom: 10px; word-wrap: break-word; }
         .detalle-info strong { color: var(--azul-principal); }
     </style>
 </head>
@@ -109,13 +58,25 @@
         <img src="https://www.hospitalcayetano.gob.pe/PortalWeb/assets/icon/logo-final.png" alt="Logo VeriDoc-Med" class="logo">
         <h1>Verificador de Documentos</h1>
 
-        <div id="scanner-container"></div>
-        
-        <p style="text-align:center; color:#777; margin:-10px 0 15px 0;">o ingrese el código manualmente</p>
+        <!-- 1. CAMBIO: Vista inicial con dos botones -->
+        <div id="vista-inicial">
+            <button id="btn-iniciar-scan">Escanear QR</button>
+            <button id="btn-iniciar-manual">Verificar por Código</button>
+        </div>
 
-        <input type="text" id="codigo-input" placeholder="VDM-XXXXXXX">
-        <button id="verificar-btn">Verificar Código</button>
+        <!-- 2. CAMBIO: Contenedores para las vistas de verificación -->
+        <div id="vista-scan" class="hidden">
+            <div id="scanner-container"></div>
+            <button id="btn-cancelar-scan">Cancelar</button>
+        </div>
 
+        <div id="vista-manual" class="hidden">
+            <input type="text" id="codigo-input" placeholder="VDM-XXXXXXX">
+            <button id="verificar-btn">Verificar Código</button>
+            <button id="btn-cancelar-manual" class="secondary">Cancelar</button>
+        </div>
+
+        <!-- Contenedores de resultado (sin cambios ) -->
         <div id="resultado-exito" class="hidden">
             <div class="resultado-banner banner-exito">REGISTRADO</div>
             <div class="detalle-info">
@@ -143,42 +104,38 @@
     const { createClient } = supabase;
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY );
 
+    let html5QrCode;
+
     document.addEventListener('DOMContentLoaded', () => {
-        const codigoInput = document.getElementById('codigo-input');
-        const verificarBtn = document.getElementById('verificar-btn');
-        
-        const html5QrCode = new Html5Qrcode("scanner-container");
-        
-        const onScanSuccess = (decodedText, decodedResult) => {
-            console.log(`Scan result: ${decodedText}`);
-            try {
-                const qrData = JSON.parse(decodedText);
-                if (qrData && qrData.codigo) {
-                    codigoInput.value = qrData.codigo;
-                    verificarCodigo(qrData.codigo);
-                    html5QrCode.stop().catch(err => console.error("Error al detener el scanner:", err));
-                } else {
-                    alert("El código QR escaneado no es un código de VeriDoc-Med válido.");
-                }
-            } catch (e) {
-                console.error("Error al parsear el QR JSON:", e);
-                alert("El código QR escaneado no tiene un formato reconocible.");
-            }
-        };
+        const vistaInicial = document.getElementById('vista-inicial');
+        const vistaScan = document.getElementById('vista-scan');
+        const vistaManual = document.getElementById('vista-manual');
 
-        const onScanFailure = (error) => {
-            // Ignorar errores continuos
-        };
+        // Botones de la vista inicial
+        document.getElementById('btn-iniciar-scan').addEventListener('click', () => {
+            vistaInicial.classList.add('hidden');
+            vistaScan.classList.remove('hidden');
+            iniciarScanner();
+        });
+        document.getElementById('btn-iniciar-manual').addEventListener('click', () => {
+            vistaInicial.classList.add('hidden');
+            vistaManual.classList.remove('hidden');
+        });
 
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-            .catch(err => {
-                console.error("No se pudo iniciar el escáner de QR:", err);
-                alert("No se pudo acceder a la cámara. Por favor, asegúrese de dar los permisos necesarios y de acceder a la página a través de HTTPS.");
-            });
+        // Botones de cancelar
+        document.getElementById('btn-cancelar-scan').addEventListener('click', () => {
+            detenerScanner();
+            vistaScan.classList.add('hidden');
+            vistaInicial.classList.remove('hidden');
+        });
+        document.getElementById('btn-cancelar-manual').addEventListener('click', () => {
+            vistaManual.classList.add('hidden');
+            vistaInicial.classList.remove('hidden');
+        });
 
-        verificarBtn.addEventListener('click', () => {
-            const codigo = codigoInput.value.trim().toUpperCase();
+        // Botón de verificación manual
+        document.getElementById('verificar-btn').addEventListener('click', () => {
+            const codigo = document.getElementById('codigo-input').value.trim().toUpperCase();
             if (codigo) {
                 verificarCodigo(codigo);
             } else {
@@ -187,9 +144,48 @@
         });
     });
 
+    function iniciarScanner() {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("scanner-container");
+        }
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+            .catch(err => {
+                alert("No se pudo acceder a la cámara. Asegúrese de dar los permisos y usar HTTPS.");
+            });
+    }
+
+    function detenerScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().catch(err => console.error("Error al detener el scanner:", err));
+        }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        detenerScanner();
+        try {
+            const qrData = JSON.parse(decodedText);
+            if (qrData && qrData.codigo) {
+                document.getElementById('codigo-input').value = qrData.codigo;
+                verificarCodigo(qrData.codigo);
+            } else {
+                alert("El código QR escaneado no es un código de VeriDoc-Med válido.");
+            }
+        } catch (e) {
+            alert("El código QR escaneado no tiene un formato reconocible.");
+        }
+    }
+
+    function onScanFailure(error) { /* Ignorar */ }
+
     async function verificarCodigo(codigo) {
         const resultadoExitoDiv = document.getElementById('resultado-exito');
         const resultadoErrorDiv = document.getElementById('resultado-error');
+        
+        // Ocultar todas las vistas de entrada
+        document.getElementById('vista-inicial').classList.add('hidden');
+        document.getElementById('vista-scan').classList.add('hidden');
+        document.getElementById('vista-manual').classList.add('hidden');
         
         resultadoExitoDiv.classList.add('hidden');
         resultadoErrorDiv.classList.add('hidden');
@@ -197,16 +193,11 @@
         try {
             const { data: registro, error } = await supabaseClient
                 .from('autenticacion_firmas')
-                .select(`
-                    *,
-                    doctor_registro (nombre)
-                `)
+                .select('*, doctor_registro(nombre)')
                 .eq('codigo_validacion', codigo)
                 .single();
 
-            if (error && error.code !== 'PGRST116') {
-                throw error;
-            }
+            if (error && error.code !== 'PGRST116') throw error;
 
             if (registro) {
                 document.getElementById('detalle-doctor').textContent = registro.doctor_registro.nombre || 'No disponible';
@@ -217,13 +208,10 @@
                 document.getElementById('detalle-num-hist').textContent = registro.numero_historia;
                 document.getElementById('detalle-fecha-aten').textContent = new Date(registro.fecha_atencion).toLocaleDateString();
                 document.getElementById('detalle-obs').textContent = registro.observacion;
-                
                 resultadoExitoDiv.classList.remove('hidden');
-
             } else {
                 resultadoErrorDiv.classList.remove('hidden');
             }
-
         } catch (error) {
             alert(`Error al verificar el código: ${error.message}`);
             resultadoErrorDiv.classList.remove('hidden');
