@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VeriDoc-Med: Verificador de Documentos v2.0</title>
+    <title>VeriDoc-Med: Verificador de Documentos v2.1 (Final)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
@@ -43,6 +43,7 @@
         #scanner-container { width: 100%; border: 2px dashed var(--borde-suave); border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
         input { width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--borde-suave); border-radius: 8px; font-size: 1.1rem; box-sizing: border-box; text-align: center; text-transform: uppercase; }
         button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; color: var(--blanco); background-color: var(--dorado-acento); margin-top: 10px; }
+        button.secondary { background-color: #7f8c8d; }
         .hidden { display: none; }
         .resultado-banner { padding: 20px; color: var(--blanco); font-weight: bold; font-size: 1.3rem; text-align: center; border-radius: 8px; margin-top: 25px; }
         .banner-exito { background-color: var(--verde-exito); }
@@ -58,16 +59,14 @@
         <img src="https://www.hospitalcayetano.gob.pe/PortalWeb/assets/icon/logo-final.png" alt="Logo VeriDoc-Med" class="logo">
         <h1>Verificador de Documentos</h1>
 
-        <!-- 1. CAMBIO: Vista inicial con dos botones -->
         <div id="vista-inicial">
             <button id="btn-iniciar-scan">Escanear QR</button>
             <button id="btn-iniciar-manual">Verificar por Código</button>
         </div>
 
-        <!-- 2. CAMBIO: Contenedores para las vistas de verificación -->
         <div id="vista-scan" class="hidden">
             <div id="scanner-container"></div>
-            <button id="btn-cancelar-scan">Cancelar</button>
+            <button id="btn-cancelar-scan" class="secondary">Cancelar</button>
         </div>
 
         <div id="vista-manual" class="hidden">
@@ -76,7 +75,6 @@
             <button id="btn-cancelar-manual" class="secondary">Cancelar</button>
         </div>
 
-        <!-- Contenedores de resultado (sin cambios ) -->
         <div id="resultado-exito" class="hidden">
             <div class="resultado-banner banner-exito">REGISTRADO</div>
             <div class="detalle-info">
@@ -90,11 +88,15 @@
                 <p><strong>Fecha Atención:</strong> <span id="detalle-fecha-aten"></span></p>
                 <p><strong>Observación:</strong> <span id="detalle-obs"></span></p>
             </div>
+            <!-- 1. CAMBIO: Botón Volver añadido -->
+            <button class="btn-volver secondary">Volver</button>
         </div>
 
         <div id="resultado-error" class="hidden">
             <div class="resultado-banner banner-error">NO ENCONTRADO</div>
             <p style="text-align:center; margin-top:20px;">El código de validación no existe en nuestra base de datos o ha sido alterado.</p>
+            <!-- 1. CAMBIO: Botón Volver añadido -->
+            <button class="btn-volver secondary">Volver</button>
         </div>
     </div>
 
@@ -111,7 +113,6 @@
         const vistaScan = document.getElementById('vista-scan');
         const vistaManual = document.getElementById('vista-manual');
 
-        // Botones de la vista inicial
         document.getElementById('btn-iniciar-scan').addEventListener('click', () => {
             vistaInicial.classList.add('hidden');
             vistaScan.classList.remove('hidden');
@@ -122,7 +123,6 @@
             vistaManual.classList.remove('hidden');
         });
 
-        // Botones de cancelar
         document.getElementById('btn-cancelar-scan').addEventListener('click', () => {
             detenerScanner();
             vistaScan.classList.add('hidden');
@@ -133,7 +133,6 @@
             vistaInicial.classList.remove('hidden');
         });
 
-        // Botón de verificación manual
         document.getElementById('verificar-btn').addEventListener('click', () => {
             const codigo = document.getElementById('codigo-input').value.trim().toUpperCase();
             if (codigo) {
@@ -141,6 +140,15 @@
             } else {
                 alert('Por favor, ingrese un código de validación.');
             }
+        });
+
+        // 2. CAMBIO: Lógica para los botones "Volver"
+        document.querySelectorAll('.btn-volver').forEach(button => {
+            button.addEventListener('click', () => {
+                document.getElementById('resultado-exito').classList.add('hidden');
+                document.getElementById('resultado-error').classList.add('hidden');
+                vistaInicial.classList.remove('hidden');
+            });
         });
     });
 
@@ -182,7 +190,6 @@
         const resultadoExitoDiv = document.getElementById('resultado-exito');
         const resultadoErrorDiv = document.getElementById('resultado-error');
         
-        // Ocultar todas las vistas de entrada
         document.getElementById('vista-inicial').classList.add('hidden');
         document.getElementById('vista-scan').classList.add('hidden');
         document.getElementById('vista-manual').classList.add('hidden');
